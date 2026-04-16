@@ -1,0 +1,22 @@
+{
+  "appTitle": "Recurrence Picker Demo",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "startDate": "Start date",
+  "@startDate": {
+    "description": "Label for the start date section"
+  },
+  "recurrenceRule": "Recurrence rule",
+  "@recurrenceRule": {
+    "description": "Label for the recurrence rule section"
+  },
+  "description": "Description",
+  "@description": {
+    "description": "Label for the human-readable description"
+  },
+  "rruleString": "RRULE string",
+  "@rruleString": {
+    "description": "Label for the raw RRULE string"
+  }
+}

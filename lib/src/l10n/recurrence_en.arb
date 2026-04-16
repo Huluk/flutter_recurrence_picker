@@ -1,0 +1,106 @@
+{
+  "decrementInterval": "Decrement recurrence interval",
+  "@decrementInterval": {
+    "description": "Semantic label for button to decrement the recurrence interval"
+  },
+  "endOfMonthHint": "This day doesn't exist in every month.",
+  "@endOfMonthHint": {
+    "description": "Hint text explaining why the end-of-month behavior selector is shown"
+  },
+  "endOfMonthPreviousDay": "Or previous day",
+  "@endOfMonthPreviousDay": {
+    "description": "Use the last available day of the month when the target day doesn't exist"
+  },
+  "endOfMonthSkip": "Skip",
+  "@endOfMonthSkip": {
+    "description": "Skip months that don't have the target day"
+  },
+  "endOfMonthAnnotationPreviousDay": "or previous available day",
+  "@endOfMonthAnnotationPreviousDay": {
+    "description": "Verbose suffix for clamped end-of-month rules in describeRecurrenceRule"
+  },
+  "endOfMonthAnnotationSkip": "skip when date does not exist",
+  "@endOfMonthAnnotationSkip": {
+    "description": "Verbose suffix for skipped end-of-month rules in describeRecurrenceRule"
+  },
+  "every": "Every",
+  "@every": {
+    "description": "Recurrence mode: repeat every N time units"
+  },
+  "frequencyDays": "days",
+  "@frequencyDays": {
+    "description": "Frequency unit for daily recurrence"
+  },
+  "frequencyMonths": "months",
+  "@frequencyMonths": {
+    "description": "Frequency unit for monthly recurrence"
+  },
+  "frequencyWeeks": "weeks",
+  "@frequencyWeeks": {
+    "description": "Frequency unit for weekly recurrence"
+  },
+  "frequencyYears": "years",
+  "@frequencyYears": {
+    "description": "Frequency unit for yearly recurrence"
+  },
+  "incrementInterval": "Increment recurrence interval",
+  "@incrementInterval": {
+    "description": "Semantic label for button to increment the recurrence interval"
+  },
+  "interval": "Interval",
+  "@interval": {
+    "description": "Label for the recurrence interval number field"
+  },
+  "monthlyByDate": "Date",
+  "@monthlyByDate": {
+    "description": "Label for choosing a day-of-month in monthly recurrence"
+  },
+  "monthlyByWeekday": "Weekday",
+  "@monthlyByWeekday": {
+    "description": "Label for choosing nth weekday in monthly recurrence"
+  },
+  "on": "Custom",
+  "@on": {
+    "description": "Recurrence mode: on specific days/dates"
+  },
+  "onConnector": "on",
+  "@onConnector": {
+    "description": "Connecting word in phrases like 'every 2 weeks on Monday'"
+  },
+  "ordinalFirst": "1st",
+  "@ordinalFirst": {
+    "description": "Ordinal for the first occurrence of a weekday in a month"
+  },
+  "ordinalFourth": "4th",
+  "@ordinalFourth": {
+    "description": "Ordinal for the fourth occurrence of a weekday in a month"
+  },
+  "ordinalLast": "Last",
+  "@ordinalLast": {
+    "description": "Ordinal for the last occurrence of a weekday in a month"
+  },
+  "ordinalSecondToLast": "2nd to last",
+  "@ordinalSecondToLast": {
+    "description": "Ordinal for the second-to-last occurrence of a weekday in a month"
+  },
+  "ordinalSecond": "2nd",
+  "@ordinalSecond": {
+    "description": "Ordinal for the second occurrence of a weekday in a month"
+  },
+  "ordinalThird": "3rd",
+  "@ordinalThird": {
+    "description": "Ordinal for the third occurrence of a weekday in a month"
+  },
+  "weekdayDay": "Day",
+  "@weekdayDay": {
+    "description": "Special weekday option meaning any day of the week"
+  },
+  "weekdayWorkDay": "Work day",
+  "@weekdayWorkDay": {
+    "description": "Special weekday option meaning a working day (Mon–Fri by default)"
+  },
+  "weekdayWeekendDay": "Weekend day",
+  "@weekdayWeekendDay": {
+    "description": "Special weekday option meaning a weekend day (Sat–Sun by default)"
+  }
+}
