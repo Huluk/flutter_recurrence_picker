@@ -123,13 +123,13 @@ abstract class RecurrenceLocalizations {
   /// **'Skip'**
   String get endOfMonthSkip;
 
-  /// Verbose suffix for clamped end-of-month rules in RecurrenceRuleDescription.describe
+  /// Verbose suffix for clamped end-of-month rules in describeRecurrenceRule
   ///
   /// In en, this message translates to:
   /// **'or previous available day'**
   String get endOfMonthAnnotationPreviousDay;
 
-  /// Verbose suffix for skipped end-of-month rules in RecurrenceRuleDescription.describe
+  /// Verbose suffix for skipped end-of-month rules in describeRecurrenceRule
   ///
   /// In en, this message translates to:
   /// **'skip when date does not exist'**

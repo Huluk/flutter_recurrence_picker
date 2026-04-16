@@ -21,10 +21,12 @@ class RecurrenceLocalizationsDe extends RecurrenceLocalizations {
   String get endOfMonthSkip => 'Überspringen';
 
   @override
-  String get endOfMonthAnnotationPreviousDay => 'oder vorheriger verfügbarer Tag';
+  String get endOfMonthAnnotationPreviousDay =>
+      'oder vorheriger verfügbarer Tag';
 
   @override
-  String get endOfMonthAnnotationSkip => 'übersprungen wenn Datum nicht existiert';
+  String get endOfMonthAnnotationSkip =>
+      'übersprungen wenn Datum nicht existiert';
 
   @override
   String get every => 'Alle';
