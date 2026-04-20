@@ -4,7 +4,6 @@ import 'package:recurrence_picker/recurrence_picker.dart';
 import 'package:recurrence_picker/src/month_grid.dart';
 import 'package:recurrence_picker/src/monthly_picker.dart';
 import 'package:recurrence_picker/src/number_stepper.dart';
-import 'package:recurrence_picker/src/weekly_day_picker.dart';
 import 'package:rrule/rrule.dart';
 
 Future<void> pumpPicker(
@@ -78,7 +77,7 @@ void main() {
       testWidgets('does not show custom-mode content', (tester) async {
         await pumpPicker(tester);
 
-        expect(find.byType(WeeklyDayPicker), findsNothing);
+        expect(find.byType(WeekDayPicker), findsNothing);
         expect(find.byType(MonthlyPicker), findsNothing);
         expect(find.byType(MonthGrid), findsNothing);
       });
@@ -128,12 +127,12 @@ void main() {
         await pumpPicker(tester);
 
         await tapCustomToggle(tester);
-        expect(find.byType(WeeklyDayPicker), findsOneWidget);
+        expect(find.byType(WeekDayPicker), findsOneWidget);
 
         await selectFrequency(tester, 'days');
 
         expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
-        expect(find.byType(WeeklyDayPicker), findsNothing);
+        expect(find.byType(WeekDayPicker), findsNothing);
       });
     });
 
@@ -148,7 +147,7 @@ void main() {
 
         await tapCustomToggle(tester);
 
-        expect(find.byType(WeeklyDayPicker), findsOneWidget);
+        expect(find.byType(WeekDayPicker), findsOneWidget);
         expect(received, isNotNull);
         expect(received!.frequency, Frequency.weekly);
         expect(received!.byWeekDays, isNotEmpty);
@@ -158,12 +157,11 @@ void main() {
         await pumpPicker(tester);
 
         await tapCustomToggle(tester);
-        expect(find.byType(WeeklyDayPicker), findsOneWidget);
+        expect(find.byType(WeekDayPicker), findsOneWidget);
 
         await tapCustomToggle(tester);
-        expect(find.byType(WeeklyDayPicker), findsNothing);
+        expect(find.byType(WeekDayPicker), findsNothing);
       });
-
     });
 
     group('custom mode content', () {
@@ -184,8 +182,7 @@ void main() {
         );
       });
 
-      testWidgets('shows MonthlyPicker for monthly frequency',
-          (tester) async {
+      testWidgets('shows MonthlyPicker for monthly frequency', (tester) async {
         await pumpPicker(tester, initialFrequency: Frequency.monthly);
 
         await tapCustomToggle(tester);

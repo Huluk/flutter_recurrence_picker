@@ -9,7 +9,7 @@ import 'monthly_picker.dart';
 import 'nth_weekday_selector.dart';
 import 'number_stepper.dart';
 import 'rrule_utils.dart';
-import 'weekly_day_picker.dart';
+import 'week_day_picker.dart';
 
 /// Internal switch between the simple interval rule and the detailed
 /// day/date-based rule. Exposed in the UI as the "on specific days" toggle.
@@ -322,7 +322,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
   // -----------------------------------------------------------------
 
   Widget get _customContent => switch (_frequency) {
-        Frequency.weekly => WeeklyDayPicker(
+        Frequency.weekly => WeekDayPicker(
             selected: _selectedWeekdays,
             onChanged: (v) {
               setState(() => _selectedWeekdays = v);

@@ -13,3 +13,4 @@ export 'src/rrule_utils.dart'
         RecurrenceRuleClamping,
         maxDaysInMonths,
         minDaysInMonth;
+export 'src/week_day_picker.dart' show WeekDayPicker;

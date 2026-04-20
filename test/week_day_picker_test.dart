@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:recurrence_picker/recurrence_picker.dart';
-import 'package:recurrence_picker/src/weekly_day_picker.dart';
 
 Future<void> pumpPicker(
   WidgetTester tester, {
@@ -14,7 +13,7 @@ Future<void> pumpPicker(
       supportedLocales: RecurrenceLocalizations.supportedLocales,
       locale: const Locale('en'),
       home: Scaffold(
-        body: WeeklyDayPicker(
+        body: WeekDayPicker(
           selected: selected,
           onChanged: onChanged ?? (_) {},
         ),
@@ -26,7 +25,7 @@ Future<void> pumpPicker(
 
 void main() {
   group('WeeklyDayPicker', () {
-    group('renders', () {
+    group('render', () {
       testWidgets('seven FilterChips', (tester) async {
         await pumpPicker(tester);
         expect(find.byType(FilterChip), findsNWidgets(7));
@@ -51,10 +50,10 @@ void main() {
         );
         final selectedLabels = chips
             .where((c) => c.selected)
-            .map((c) => (c.label as Text).data)
+            .map((c) => (c.key as ValueKey<String>).value)
             .toList();
 
-        expect(selectedLabels, unorderedEquals(['Wed', 'Fri']));
+        expect(selectedLabels, unorderedEquals(['wday-3', 'wday-5']));
       });
     });
 
