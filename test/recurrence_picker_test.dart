@@ -38,22 +38,36 @@ Future<void> pumpPicker(
   await tester.pumpAndSettle();
 }
 
+Future<void> tapCustomToggle(WidgetTester tester) async {
+  await tester.tap(find.byType(Switch));
+  await tester.pumpAndSettle();
+}
+
+Future<void> selectFrequency(WidgetTester tester, String label) async {
+  await tester.tap(find.byType(DropdownButton<Frequency>));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label).last);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('RecurrencePicker', () {
-    group('initial render (Every mode)', () {
-      testWidgets('shows mode dropdown, interval stepper, frequency dropdown',
+    group('initial render', () {
+      testWidgets(
+          'shows interval stepper, frequency dropdown, and custom toggle',
           (tester) async {
         await pumpPicker(tester);
 
-        expect(
-          find.byType(DropdownButton<RecurrenceMode>),
-          findsOneWidget,
-        );
         expect(find.byType(NumberStepper), findsOneWidget);
-        expect(
-          find.byType(DropdownButton<Frequency>),
-          findsOneWidget,
-        );
+        expect(find.byType(DropdownButton<Frequency>), findsOneWidget);
+        expect(find.byType(Switch), findsOneWidget);
+        expect(find.text('on specific days'), findsOneWidget);
+      });
+
+      testWidgets('custom toggle is off by default', (tester) async {
+        await pumpPicker(tester);
+
+        expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
       });
 
       testWidgets('displays initial frequency label', (tester) async {
@@ -68,23 +82,28 @@ void main() {
         expect(find.byType(MonthlyPicker), findsNothing);
         expect(find.byType(MonthGrid), findsNothing);
       });
+
+      testWidgets('custom toggle is disabled when frequency is daily',
+          (tester) async {
+        await pumpPicker(tester, initialFrequency: Frequency.daily);
+
+        expect(
+          tester.widget<Switch>(find.byType(Switch)).onChanged,
+          isNull,
+        );
+      });
     });
 
-    group('Every mode – frequency change', () {
+    group('frequency change', () {
       testWidgets('changing frequency fires onRecurrenceChanged',
           (tester) async {
         RecurrenceRule? received;
         await pumpPicker(
           tester,
-          initialFrequency: Frequency.weekly,
           onRecurrenceChanged: (r) => received = r,
         );
 
-        // Open frequency dropdown and select "months".
-        await tester.tap(find.byType(DropdownButton<Frequency>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('months').last);
-        await tester.pumpAndSettle();
+        await selectFrequency(tester, 'months');
 
         expect(received, isNotNull);
         expect(received!.frequency, Frequency.monthly);
@@ -99,18 +118,27 @@ void main() {
           onRecurrenceChanged: (r) => received = r,
         );
 
-        await tester.tap(find.byType(DropdownButton<Frequency>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('days').last);
-        await tester.pumpAndSettle();
+        await selectFrequency(tester, 'days');
 
         expect(received!.frequency, Frequency.daily);
       });
+
+      testWidgets('switching to daily while custom is on resets the toggle',
+          (tester) async {
+        await pumpPicker(tester);
+
+        await tapCustomToggle(tester);
+        expect(find.byType(WeeklyDayPicker), findsOneWidget);
+
+        await selectFrequency(tester, 'days');
+
+        expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+        expect(find.byType(WeeklyDayPicker), findsNothing);
+      });
     });
 
-    group('mode switching', () {
-      testWidgets('switching to Custom mode shows custom content',
-          (tester) async {
+    group('custom toggle', () {
+      testWidgets('toggling on shows custom content', (tester) async {
         RecurrenceRule? received;
         await pumpPicker(
           tester,
@@ -118,43 +146,28 @@ void main() {
           onRecurrenceChanged: (r) => received = r,
         );
 
-        // Open mode dropdown and select "Custom".
-        await tester.tap(find.byType(DropdownButton<RecurrenceMode>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Custom').last);
-        await tester.pumpAndSettle();
+        await tapCustomToggle(tester);
 
-        // Custom weekly mode shows a WeeklyDayPicker.
         expect(find.byType(WeeklyDayPicker), findsOneWidget);
-
-        // The rule should include byWeekDays.
         expect(received, isNotNull);
         expect(received!.frequency, Frequency.weekly);
         expect(received!.byWeekDays, isNotEmpty);
       });
 
-      testWidgets('switching back to Every hides custom content',
-          (tester) async {
+      testWidgets('toggling off hides custom content', (tester) async {
         await pumpPicker(tester);
 
-        // Switch to Custom.
-        await tester.tap(find.byType(DropdownButton<RecurrenceMode>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Custom').last);
-        await tester.pumpAndSettle();
+        await tapCustomToggle(tester);
         expect(find.byType(WeeklyDayPicker), findsOneWidget);
 
-        // Switch back to Every.
-        await tester.tap(find.byType(DropdownButton<RecurrenceMode>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Every').last);
-        await tester.pumpAndSettle();
+        await tapCustomToggle(tester);
         expect(find.byType(WeeklyDayPicker), findsNothing);
       });
+
     });
 
-    group('Custom mode – weekly', () {
-      testWidgets('rule includes selected weekdays', (tester) async {
+    group('custom mode content', () {
+      testWidgets('weekly rule includes selected weekdays', (tester) async {
         RecurrenceRule? received;
         await pumpPicker(
           tester,
@@ -162,11 +175,7 @@ void main() {
           onRecurrenceChanged: (r) => received = r,
         );
 
-        // Switch to Custom.
-        await tester.tap(find.byType(DropdownButton<RecurrenceMode>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Custom').last);
-        await tester.pumpAndSettle();
+        await tapCustomToggle(tester);
 
         // Default selection is Monday (from _selectedWeekdays init).
         expect(
@@ -174,38 +183,21 @@ void main() {
           contains(DateTime.monday),
         );
       });
-    });
 
-    group('Custom mode – monthly', () {
-      testWidgets('shows MonthlyPicker for monthly frequency', (tester) async {
-        await pumpPicker(
-          tester,
-          initialFrequency: Frequency.monthly,
-        );
+      testWidgets('shows MonthlyPicker for monthly frequency',
+          (tester) async {
+        await pumpPicker(tester, initialFrequency: Frequency.monthly);
 
-        // Switch to Custom.
-        await tester.tap(find.byType(DropdownButton<RecurrenceMode>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Custom').last);
-        await tester.pumpAndSettle();
+        await tapCustomToggle(tester);
 
         expect(find.byType(MonthlyPicker), findsOneWidget);
       });
-    });
 
-    group('Custom mode – yearly', () {
       testWidgets('shows MonthGrid and MonthlyPicker for yearly',
           (tester) async {
-        await pumpPicker(
-          tester,
-          initialFrequency: Frequency.yearly,
-        );
+        await pumpPicker(tester, initialFrequency: Frequency.yearly);
 
-        // Switch to Custom.
-        await tester.tap(find.byType(DropdownButton<RecurrenceMode>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Custom').last);
-        await tester.pumpAndSettle();
+        await tapCustomToggle(tester);
 
         expect(find.byType(MonthGrid), findsOneWidget);
         expect(find.byType(MonthlyPicker), findsOneWidget);
@@ -213,8 +205,7 @@ void main() {
     });
 
     group('end-of-month selector', () {
-      testWidgets('appears for monthly with start date > 28',
-          (tester) async {
+      testWidgets('appears for monthly with start date > 28', (tester) async {
         await pumpPicker(
           tester,
           initialFrequency: Frequency.monthly,
@@ -224,8 +215,7 @@ void main() {
         expect(find.byType(EndOfMonthSelector), findsOneWidget);
       });
 
-      testWidgets('hidden for monthly with start date <= 28',
-          (tester) async {
+      testWidgets('hidden for monthly with start date <= 28', (tester) async {
         await pumpPicker(
           tester,
           initialFrequency: Frequency.monthly,
@@ -270,11 +260,7 @@ void main() {
           onRecurrenceChanged: (r) => received = r,
         );
 
-        // Switch to Custom.
-        await tester.tap(find.byType(DropdownButton<RecurrenceMode>));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Custom').last);
-        await tester.pumpAndSettle();
+        await tapCustomToggle(tester);
 
         expect(
           received!.byWeekDays.map((e) => e.day),

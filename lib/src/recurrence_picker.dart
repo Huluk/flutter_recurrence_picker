@@ -11,16 +11,16 @@ import 'number_stepper.dart';
 import 'rrule_utils.dart';
 import 'weekly_day_picker.dart';
 
-/// Whether the picker is in "Every N units" mode or
-/// the detailed "Custom" mode.
+/// Internal switch between the simple interval rule and the detailed
+/// day/date-based rule. Exposed in the UI as the "on specific days" toggle.
 enum RecurrenceMode { every, custom }
 
 /// A compound widget for selecting a [RecurrenceRule].
 ///
-/// In **Every** mode the user picks an interval and
-/// frequency (e.g. "every 2 weeks"). In **Custom** mode
-/// the user specifies exactly which days, weekdays, or months
-/// the recurrence targets.
+/// The interval and frequency ("every 2 weeks") are always shown. A toggle
+/// labelled "on specific days" expands the picker into **Custom** mode, where
+/// the user specifies exactly which days, weekdays, or months the recurrence
+/// targets. The toggle is disabled for the daily frequency.
 class RecurrencePicker extends StatefulWidget {
   final Frequency initialFrequency;
   final int initialInterval;
@@ -55,7 +55,8 @@ class RecurrencePicker extends StatefulWidget {
 }
 
 class _RecurrencePickerState extends State<RecurrencePicker> {
-  static const _customFrequencies = [
+  static const _frequencies = [
+    Frequency.daily,
     Frequency.weekly,
     Frequency.monthly,
     Frequency.yearly,
@@ -220,101 +221,53 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_mode == RecurrenceMode.every)
-            _everyModeRow
-          else ...[
-            _modeDropdown,
-            const SizedBox(height: 8),
-            _customIntervalRow,
+          _intervalSection,
+          _customToggle,
+          if (_mode == RecurrenceMode.custom) ...[
             const SizedBox(height: 8),
             _customContent,
           ],
         ],
       );
 
-  // -----------------------------------------------------------------
-  // "Every" mode
-  // -----------------------------------------------------------------
-
-  Widget get _everyModeRow => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              _modeDropdown,
-              const SizedBox(width: 4),
-              NumberStepper(
-                value: _interval,
-                onChanged: (v) {
-                  setState(() => _interval = v);
-                  _buildRule();
-                },
-                hint: RecurrenceLocalizations.of(context)!.interval,
-              ),
-              const SizedBox(width: 4),
-              _everyFrequencyDropdown,
-            ],
-          ),
-          if (_showEndOfMonthSelector) _endOfMonthSelector,
-        ],
-      );
-
-  Widget get _everyFrequencyDropdown => DropdownButton<Frequency>(
-        value: _frequency,
-        underline: const SizedBox.shrink(),
-        style: Theme.of(context).textTheme.titleMedium,
-        items: [
-          for (final freq in [
-            Frequency.daily,
-            Frequency.weekly,
-            Frequency.monthly,
-            Frequency.yearly,
-          ])
-            DropdownMenuItem(
-              value: freq,
-              child: Text(_frequencyLabel(freq)),
-            ),
-        ],
-        onChanged: (value) {
-          if (value == null) return;
-          setState(() => _frequency = value);
-          _buildRule();
-        },
-      );
-
-  // -----------------------------------------------------------------
-  // "Custom" mode
-  // -----------------------------------------------------------------
-
-  Widget get _customIntervalRow {
+  /// The always-visible "Every [N] [freq]" row, plus the end-of-month
+  /// selector when applicable in "Every" mode (in "Custom" mode the selector
+  /// is rendered within [_customContent] instead).
+  Widget get _intervalSection {
     final theme = Theme.of(context);
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(_loc.every, style: theme.textTheme.titleMedium),
-        NumberStepper(
-          value: _interval,
-          onChanged: (v) {
-            setState(() => _interval = v);
-            _buildRule();
-          },
+        Row(
+          children: [
+            Text(_loc.every, style: theme.textTheme.titleMedium),
+            const SizedBox(width: 4),
+            NumberStepper(
+              value: _interval,
+              onChanged: (v) {
+                setState(() => _interval = v);
+                _buildRule();
+              },
+              hint: _loc.interval,
+            ),
+            const SizedBox(width: 4),
+            _frequencyDropdown,
+          ],
         ),
-        const SizedBox(width: 4),
-        _customFrequencyDropdown,
-        Text(
-          _loc.onConnector,
-          style: theme.textTheme.titleMedium,
-        ),
+        if (_mode == RecurrenceMode.every && _showEndOfMonthSelector)
+          _endOfMonthSelector,
       ],
     );
   }
 
-  Widget get _customFrequencyDropdown => DropdownButton<Frequency>(
+  Widget get _frequencyDropdown => DropdownButton<Frequency>(
         value: _frequency,
         underline: const SizedBox.shrink(),
+        focusColor: Colors.transparent,
         style: Theme.of(context).textTheme.titleMedium,
         items: [
-          for (final freq in _customFrequencies)
+          for (final freq in _frequencies)
             DropdownMenuItem(
               value: freq,
               child: Text(_frequencyLabel(freq)),
@@ -322,10 +275,51 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         ],
         onChanged: (value) {
           if (value == null) return;
-          setState(() => _frequency = value);
+          setState(() {
+            _frequency = value;
+            if (!_customAvailable) _mode = RecurrenceMode.every;
+          });
           _buildRule();
         },
       );
+
+  /// Whether the custom-selection toggle is meaningful: "on specific days"
+  /// does not apply for daily recurrence.
+  bool get _customAvailable => _frequency != Frequency.daily;
+
+  /// Switch + label that toggles [_mode] between every and custom. Disabled
+  /// when [_customAvailable] is false. Merged into a single semantic control.
+  Widget get _customToggle {
+    final theme = Theme.of(context);
+    return MergeSemantics(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Switch(
+            value: _mode == RecurrenceMode.custom,
+            onChanged: _customAvailable ? _setCustomMode : null,
+          ),
+          const SizedBox(width: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child:
+                Text(_loc.onSpecificDays, style: theme.textTheme.titleMedium),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setCustomMode(bool value) {
+    setState(
+      () => _mode = value ? RecurrenceMode.custom : RecurrenceMode.every,
+    );
+    _buildRule();
+  }
+
+  // -----------------------------------------------------------------
+  // "Custom" mode content
+  // -----------------------------------------------------------------
 
   Widget get _customContent => switch (_frequency) {
         Frequency.weekly => WeeklyDayPicker(
@@ -426,37 +420,6 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
           _monthlyPicker(months: _selectedMonths),
           if (_showEndOfMonthSelector) _endOfMonthSelector,
         ],
-      );
-
-  // -----------------------------------------------------------------
-  // Shared helpers
-  // -----------------------------------------------------------------
-
-  Widget get _modeDropdown => DropdownButton<RecurrenceMode>(
-        value: _mode,
-        underline: const SizedBox.shrink(),
-        style: Theme.of(context).textTheme.titleMedium,
-        items: [
-          DropdownMenuItem(
-            value: RecurrenceMode.every,
-            child: Text(_loc.every),
-          ),
-          DropdownMenuItem(
-            value: RecurrenceMode.custom,
-            child: Text(_loc.on),
-          ),
-        ],
-        onChanged: (value) {
-          if (value == null) return;
-          setState(() {
-            _mode = value;
-            if (value == RecurrenceMode.custom &&
-                _frequency == Frequency.daily) {
-              _frequency = Frequency.weekly;
-            }
-          });
-          _buildRule();
-        },
       );
 
   String _frequencyLabel(Frequency frequency) => switch (frequency) {

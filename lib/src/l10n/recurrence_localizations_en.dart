@@ -54,10 +54,7 @@ class RecurrenceLocalizationsEn extends RecurrenceLocalizations {
   String get monthlyByWeekday => 'Weekday';
 
   @override
-  String get on => 'Custom';
-
-  @override
-  String get onConnector => 'on';
+  String get onSpecificDays => 'on specific days';
 
   @override
   String get ordinalFirst => '1st';

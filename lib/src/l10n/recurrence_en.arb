@@ -59,13 +59,9 @@
   "@monthlyByWeekday": {
     "description": "Label for choosing nth weekday in monthly recurrence"
   },
-  "on": "Custom",
-  "@on": {
-    "description": "Recurrence mode: on specific days/dates"
-  },
-  "onConnector": "on",
-  "@onConnector": {
-    "description": "Connecting word in phrases like 'every 2 weeks on Monday'"
+  "onSpecificDays": "on specific days",
+  "@onSpecificDays": {
+    "description": "Label next to the toggle that switches from a simple interval to a custom day/date selection"
   },
   "ordinalFirst": "1st",
   "@ordinalFirst": {

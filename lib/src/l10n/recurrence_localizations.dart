@@ -189,17 +189,11 @@ abstract class RecurrenceLocalizations {
   /// **'Weekday'**
   String get monthlyByWeekday;
 
-  /// Recurrence mode: on specific days/dates
+  /// Label next to the toggle that switches from a simple interval to a custom day/date selection
   ///
   /// In en, this message translates to:
-  /// **'Custom'**
-  String get on;
-
-  /// Connecting word in phrases like 'every 2 weeks on Monday'
-  ///
-  /// In en, this message translates to:
-  /// **'on'**
-  String get onConnector;
+  /// **'on specific days'**
+  String get onSpecificDays;
 
   /// Ordinal for the first occurrence of a weekday in a month
   ///
