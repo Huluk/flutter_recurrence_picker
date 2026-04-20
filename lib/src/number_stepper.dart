@@ -24,6 +24,7 @@ class NumberStepper extends StatefulWidget {
 
 class _NumberStepperState extends State<NumberStepper> {
   late final TextEditingController _controller;
+  late final FocusNode _focusNode;
 
   @override
   void initState() {
@@ -31,18 +32,33 @@ class _NumberStepperState extends State<NumberStepper> {
     _controller = TextEditingController(
       text: widget.value.toString(),
     );
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
   }
 
   @override
-  void didUpdateWidget(NumberStepper oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.value != widget.value) {
-      _controller.text = widget.value.toString();
+  void didUpdateWidget(NumberStepper old) {
+    super.didUpdateWidget(old);
+    final text = widget.value.toString();
+    if (_controller.text != text) _controller.text = text;
+  }
+
+  void _onFocusChange() {
+    if (_focusNode.hasFocus) return;
+    final textValue = int.tryParse(_controller.text);
+    if (textValue == null || textValue < widget.minValue) {
+      _controller.text = widget.minValue.toString();
+      if (widget.value != widget.minValue) widget.onChanged(widget.minValue);
+    } else if (textValue > widget.maxValue) {
+      _controller.text = widget.maxValue.toString();
+      if (widget.value != widget.maxValue) widget.onChanged(widget.maxValue);
     }
   }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -58,22 +74,18 @@ class _NumberStepperState extends State<NumberStepper> {
           label: loc.decrementInterval,
           child: IconButton(
             icon: const Icon(Icons.remove),
-            onPressed: widget.value <= widget.minValue
-                ? null
-                : () => widget.onChanged(widget.value - 1),
+            onPressed: _stepAction(widget.value - 1),
           ),
         ),
         SizedBox(
           width: 48,
           child: TextFormField(
             controller: _controller,
+            focusNode: _focusNode,
             onChanged: (value) {
               final n = int.tryParse(value);
-              if (n == null) return;
-              if (n >= widget.minValue && n <= widget.maxValue) {
+              if (n != null && n >= widget.minValue && n <= widget.maxValue) {
                 widget.onChanged(n);
-              } else {
-                _controller.text = widget.value.toString();
               }
             },
             textAlign: TextAlign.center,
@@ -92,13 +104,18 @@ class _NumberStepperState extends State<NumberStepper> {
           label: loc.incrementInterval,
           child: IconButton(
             icon: const Icon(Icons.add),
-            onPressed: widget.value >= widget.maxValue
-                ? null
-                : () => widget.onChanged(widget.value + 1),
+            onPressed: _stepAction(widget.value + 1),
           ),
         ),
       ],
     );
+  }
+
+  VoidCallback? _stepAction(int targetValue) {
+    if (targetValue < widget.minValue || targetValue > widget.maxValue) {
+      return null;
+    }
+    return () => widget.onChanged(targetValue);
   }
 }
 

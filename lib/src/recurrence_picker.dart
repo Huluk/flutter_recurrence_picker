@@ -88,7 +88,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
   }
 
   @override
-  void didUpdateWidget(covariant RecurrencePicker oldWidget) {
+  void didUpdateWidget(RecurrencePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.startDate != oldWidget.startDate) {
       _applyStartDateDefaults(widget.startDate);
