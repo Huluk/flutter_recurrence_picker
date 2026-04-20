@@ -405,6 +405,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         children: [
           MonthGrid(
             selectedMonths: _selectedMonths,
+            multiSelectionEnabled: false,
             onChanged: (v) {
               final daysInMonth = maxDaysInMonths(v);
               setState(() {

@@ -9,11 +9,13 @@ import 'selectable_grid.dart';
 class MonthGrid extends StatelessWidget {
   /// Selected months (1 = January … 12 = December).
   final Set<int> selectedMonths;
+  final bool multiSelectionEnabled;
   final ValueChanged<Set<int>> onChanged;
 
   const MonthGrid({
     super.key,
     required this.selectedMonths,
+    this.multiSelectionEnabled = true,
     required this.onChanged,
   });
 
@@ -38,7 +40,9 @@ class MonthGrid extends StatelessWidget {
               ),
             ),
             selected: selectedMonths.contains(month),
-            onTap: () => _toggle(month),
+            onTap: multiSelectionEnabled
+                ? () => _toggle(month)
+                : () => _pick(month),
           ),
       ],
     );
@@ -52,5 +56,9 @@ class MonthGrid extends StatelessWidget {
       updated.add(month);
     }
     onChanged(updated);
+  }
+
+  void _pick(int month) {
+    onChanged({month});
   }
 }

@@ -1,25 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// A single cell in a [SelectableGrid].
-class SelectableGridItem {
-  /// Label widget displayed in the cell.
-  final Widget label;
-
-  /// Whether this cell is selected.
-  final bool selected;
-
-  /// Callback when the cell is tapped.
-  ///
-  /// When `null`, the cell renders as empty space (no ink, no tap).
-  final VoidCallback? onTap;
-
-  const SelectableGridItem({
-    required this.label,
-    this.selected = false,
-    this.onTap,
-  });
-}
-
 /// A grid of selectable cells displayed as a single cohesive block
 /// with shared borders, clipped to a rounded rectangle.
 ///
@@ -120,21 +100,43 @@ class SelectableGrid extends StatelessWidget {
             bottom: showBottom ? borderSide : BorderSide.none,
           ),
         ),
-        child: hasTap
-            ? Material(
-                color: item.selected
-                    ? colorScheme.primaryContainer
-                    : Colors.transparent,
-                child: InkWell(
-                  onTap: item.onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Center(child: item.label),
-                  ),
-                ),
-              )
-            : const SizedBox.shrink(),
+        child: hasTap ? item : const SizedBox.shrink(),
       ),
     );
   }
+}
+
+/// A single cell in a [SelectableGrid].
+class SelectableGridItem extends StatelessWidget {
+  /// Label widget displayed in the cell.
+  final Widget label;
+
+  /// Whether this cell is selected.
+  final bool selected;
+
+  /// Callback when the cell is tapped.
+  ///
+  /// When `null`, the cell renders as empty space (no ink, no tap).
+  final VoidCallback? onTap;
+
+  const SelectableGridItem({
+    super.key,
+    required this.label,
+    this.selected = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: selected
+            ? Theme.of(context).colorScheme.primaryContainer
+            : Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Center(child: label),
+          ),
+        ),
+      );
 }

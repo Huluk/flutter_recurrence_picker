@@ -6,6 +6,7 @@ import 'package:recurrence_picker/src/month_grid.dart';
 Future<void> pumpGrid(
   WidgetTester tester, {
   Set<int> selectedMonths = const {1},
+  bool multiSelectionEnabled = true,
   ValueChanged<Set<int>>? onChanged,
 }) async {
   await tester.pumpWidget(
@@ -16,6 +17,7 @@ Future<void> pumpGrid(
       home: Scaffold(
         body: MonthGrid(
           selectedMonths: selectedMonths,
+          multiSelectionEnabled: multiSelectionEnabled,
           onChanged: onChanged ?? (_) {},
         ),
       ),
@@ -31,8 +33,18 @@ void main() {
         await pumpGrid(tester);
 
         for (final name in [
-          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
         ]) {
           expect(find.text(name), findsOneWidget, reason: '$name not found');
         }
@@ -85,8 +97,7 @@ void main() {
         expect(received, unorderedEquals({6}));
       });
 
-      testWidgets('cannot deselect the only remaining month',
-          (tester) async {
+      testWidgets('cannot deselect the only remaining month', (tester) async {
         Set<int>? received;
         await pumpGrid(
           tester,
@@ -115,6 +126,55 @@ void main() {
         // Note: the widget is stateless; each tap sees the original
         // selectedMonths {1} since we don't rebuild.
         expect(received[1], unorderedEquals({1, 12}));
+      });
+    });
+
+    group('single-selection (multiSelectionEnabled = false)', () {
+      testWidgets('tapping a month selects only that month', (tester) async {
+        Set<int>? received;
+        await pumpGrid(
+          tester,
+          selectedMonths: {1},
+          multiSelectionEnabled: false,
+          onChanged: (v) => received = v,
+        );
+
+        await tester.tap(find.text('Mar'));
+        expect(received, unorderedEquals({3}));
+      });
+
+      testWidgets('tapping the already selected month re-selects it',
+          (tester) async {
+        Set<int>? received;
+        await pumpGrid(
+          tester,
+          selectedMonths: {4},
+          multiSelectionEnabled: false,
+          onChanged: (v) => received = v,
+        );
+
+        await tester.tap(find.text('Apr'));
+        expect(received, unorderedEquals({4}));
+      });
+
+      testWidgets('callback always emits a single-element set', (tester) async {
+        final received = <Set<int>>[];
+        await pumpGrid(
+          tester,
+          selectedMonths: {3},
+          multiSelectionEnabled: false,
+          onChanged: received.add,
+        );
+
+        await tester.tap(find.text('Jul'));
+        await tester.tap(find.text('Feb'));
+
+        for (final set in received) {
+          expect(set, hasLength(1),
+              reason: 'single-selection should always emit one month');
+        }
+        expect(received[0], unorderedEquals({7}));
+        expect(received[1], unorderedEquals({2}));
       });
     });
   });
