@@ -72,8 +72,13 @@ class _NumberStepperState extends State<NumberStepper> {
   @override
   void didUpdateWidget(NumberStepper old) {
     super.didUpdateWidget(old);
-    final text = widget.value.toString();
-    if (_controller.text != text) _controller.text = text;
+    if (_controller.text != widget.value.toString()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _controller.text != widget.value.toString()) {
+          _controller.text = widget.value.toString();
+        }
+      });
+    }
   }
 
   void _onFocusChange() {

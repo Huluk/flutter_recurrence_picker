@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Fix concurrency bug for number input.
+
 ## 0.2.0
 
 - Overhaul UI.

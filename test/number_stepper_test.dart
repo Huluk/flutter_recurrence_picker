@@ -154,6 +154,49 @@ void main() {
       });
     });
 
+    testWidgets(
+        'controller update during didUpdateWidget does not trigger '
+        'setState during build when inside a Form', (tester) async {
+      // Regression test: setting _controller.text in didUpdateWidget fires
+      // TextEditingController notifications, which caused Form ancestors to
+      // call setState() during the build phase.
+      int value = 3;
+      late StateSetter setState;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates:
+              RecurrenceLocalizations.localizationsDelegates,
+          supportedLocales: RecurrenceLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          home: Scaffold(
+            body: Form(
+              child: StatefulBuilder(
+                builder: (context, setStateFn) {
+                  setState = setStateFn;
+                  return NumberStepper(
+                    value: value,
+                    onChanged: (v) => setStateFn(() => value = v),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Changing value externally triggers didUpdateWidget which must not
+      // synchronously set _controller.text (that would fire a change
+      // notification during build, causing the Form to call setState()).
+      setState(() => value = 8);
+      await tester.pumpAndSettle();
+
+      final field =
+          tester.widget<TextFormField>(find.byType(TextFormField));
+      expect(field.controller!.text, '8');
+    });
+
     testWidgets('updates text field when value changes externally',
         (tester) async {
       int value = 3;
