@@ -1,14 +1,47 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'l10n/recurrence_localizations.dart';
 
-/// Number field with increment/decrement stepper buttons.
+/// Controls the visual appearance of [NumberStepper].
+class NumberStepperStyle {
+  /// Shape of the bubble. Defaults to a stadium (pill) shape.
+  final ShapeBorder bubbleShape;
+
+  /// Background color of the bubble.
+  /// Falls back to [ColorScheme.secondaryContainer] when null.
+  final Color? bubbleColor;
+
+  /// Text style for the number inside the field.
+  /// Falls back to [TextTheme.titleMedium] when null.
+  final TextStyle? numberStyle;
+
+  const NumberStepperStyle({
+    this.bubbleShape = const StadiumBorder(),
+    this.bubbleColor,
+    this.numberStyle,
+  });
+}
+
+/// Number field with increment/decrement stepper buttons inside a pill bubble.
+///
+/// [hint] is exposed to accessibility tools (screen-reader hint, tooltip on
+/// pointer devices) but has no visual presence.
 class NumberStepper extends StatefulWidget {
   final int value;
   final int minValue;
   final int maxValue;
   final ValueChanged<int> onChanged;
+
+  /// Accessible hint describing what is being stepped (e.g. "Repeat interval").
+  /// Announced by screen readers and shown as a tooltip on pointer devices.
+  /// When null neither is applied.
+  final String? hint;
+
+  /// Visual style.
+  final NumberStepperStyle style;
 
   const NumberStepper({
     super.key,
@@ -16,6 +49,8 @@ class NumberStepper extends StatefulWidget {
     required this.onChanged,
     this.minValue = 1,
     this.maxValue = 999,
+    this.hint,
+    this.style = const NumberStepperStyle(),
   });
 
   @override
@@ -29,9 +64,7 @@ class _NumberStepperState extends State<NumberStepper> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(
-      text: widget.value.toString(),
-    );
+    _controller = TextEditingController(text: widget.value.toString());
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusChange);
   }
@@ -45,11 +78,11 @@ class _NumberStepperState extends State<NumberStepper> {
 
   void _onFocusChange() {
     if (_focusNode.hasFocus) return;
-    final textValue = int.tryParse(_controller.text);
-    if (textValue == null || textValue < widget.minValue) {
+    final parsed = int.tryParse(_controller.text);
+    if (parsed == null || parsed < widget.minValue) {
       _controller.text = widget.minValue.toString();
       if (widget.value != widget.minValue) widget.onChanged(widget.minValue);
-    } else if (textValue > widget.maxValue) {
+    } else if (parsed > widget.maxValue) {
       _controller.text = widget.maxValue.toString();
       if (widget.value != widget.maxValue) widget.onChanged(widget.maxValue);
     }
@@ -66,57 +99,134 @@ class _NumberStepperState extends State<NumberStepper> {
   @override
   Widget build(BuildContext context) {
     final loc = RecurrenceLocalizations.of(context)!;
-    final style = Theme.of(context).textTheme.titleMedium;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Semantics(
-          label: loc.decrementInterval,
-          child: IconButton(
-            icon: const Icon(Icons.remove),
-            onPressed: _stepAction(widget.value - 1),
+    final digits = widget.maxValue.toString().length;
+    final fieldWidth = _measureFieldWidth(context, digits);
+
+    Widget field = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _focusNode.requestFocus(),
+      child: SizedBox(
+        width: math.max(
+          2.70 * kMinInteractiveDimension,
+          fieldWidth + 1.5 * kMinInteractiveDimension,
+        ),
+        height: kMinInteractiveDimension,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 2),
+          child: Align(
+            child: _numberField(digits),
           ),
         ),
-        SizedBox(
-          width: 48,
-          child: TextFormField(
-            controller: _controller,
-            focusNode: _focusNode,
-            onChanged: (value) {
-              final n = int.tryParse(value);
-              if (n != null && n >= widget.minValue && n <= widget.maxValue) {
-                widget.onChanged(n);
-              }
-            },
-            textAlign: TextAlign.center,
-            style: style,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: loc.interval,
+      ),
+    );
+
+    if (widget.hint != null) {
+      field = Tooltip(
+        message: widget.hint!,
+        child: Semantics(hint: widget.hint, child: field),
+      );
+    }
+
+    return Material(
+      color: widget.style.bubbleColor ??
+          Theme.of(context).colorScheme.secondaryContainer,
+      shape: widget.style.bubbleShape,
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          field,
+          Positioned(
+            left: 0,
+            child: Semantics(
+              label: loc.decrementInterval,
+              child: _StepButton(
+                icon: Icons.remove,
+                onPressed: _stepAction(widget.value - 1),
+              ),
             ),
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(_log10(widget.maxValue)),
-            ],
           ),
-        ),
-        Semantics(
-          label: loc.incrementInterval,
-          child: IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _stepAction(widget.value + 1),
+          Positioned(
+            right: 0,
+            child: Semantics(
+              label: loc.incrementInterval,
+              child: _StepButton(
+                icon: Icons.add,
+                onPressed: _stepAction(widget.value + 1),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  VoidCallback? _stepAction(int targetValue) {
-    if (targetValue < widget.minValue || targetValue > widget.maxValue) {
-      return null;
-    }
-    return () => widget.onChanged(targetValue);
+  Widget _numberField(int digits) => TextFormField(
+        controller: _controller,
+        focusNode: _focusNode,
+        onChanged: (value) {
+          final n = int.tryParse(value);
+          if (n != null && n >= widget.minValue && n <= widget.maxValue) {
+            widget.onChanged(n);
+          }
+        },
+        textAlign: TextAlign.center,
+        style:
+            widget.style.numberStyle ?? Theme.of(context).textTheme.titleMedium,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+        ),
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(digits),
+        ],
+      );
+
+  /// Measures the pixel width needed for [digits], with some extra allowance.
+  double _measureFieldWidth(BuildContext context, int digits) {
+    final resolvedStyle = (widget.style.numberStyle ??
+            Theme.of(context).textTheme.titleMedium ??
+            const TextStyle())
+        .copyWith(inherit: true);
+    final painter = TextPainter(
+      text: TextSpan(text: '0' * digits, style: resolvedStyle),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return painter.width + 4;
+  }
+
+  VoidCallback? _stepAction(int target) {
+    if (target < widget.minValue || target > widget.maxValue) return null;
+    return () => widget.onChanged(target);
   }
 }
 
-int _log10(int value) => value.toString().length;
+/// A transparent IconButton so the parent bubble Material owns all ink.
+class _StepButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _StepButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        minimumSize:
+            const Size(kMinInteractiveDimension, kMinInteractiveDimension),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        backgroundColor: Colors.transparent,
+        disabledBackgroundColor: Colors.transparent,
+        elevation: 0,
+        shadowColor: Colors.transparent,
+      ),
+    );
+  }
+}

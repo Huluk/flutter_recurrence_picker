@@ -216,36 +216,33 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
   // -----------------------------------------------------------------
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (_mode == RecurrenceMode.every)
-          _everyModeRow(theme)
-        else ...[
-          _modeDropdown(theme),
-          const SizedBox(height: 8),
-          _customIntervalRow(theme),
-          const SizedBox(height: 8),
-          _customContent(),
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_mode == RecurrenceMode.every)
+            _everyModeRow
+          else ...[
+            _modeDropdown,
+            const SizedBox(height: 8),
+            _customIntervalRow,
+            const SizedBox(height: 8),
+            _customContent,
+          ],
         ],
-      ],
-    );
-  }
+      );
 
   // -----------------------------------------------------------------
   // "Every" mode
   // -----------------------------------------------------------------
 
-  Widget _everyModeRow(ThemeData theme) => Column(
+  Widget get _everyModeRow => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              _modeDropdown(theme),
+              _modeDropdown,
               const SizedBox(width: 4),
               NumberStepper(
                 value: _interval,
@@ -253,19 +250,20 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
                   setState(() => _interval = v);
                   _buildRule();
                 },
+                hint: RecurrenceLocalizations.of(context)!.interval,
               ),
               const SizedBox(width: 4),
-              _everyFrequencyDropdown(theme),
+              _everyFrequencyDropdown,
             ],
           ),
           if (_showEndOfMonthSelector) _endOfMonthSelector,
         ],
       );
 
-  Widget _everyFrequencyDropdown(ThemeData theme) => DropdownButton<Frequency>(
+  Widget get _everyFrequencyDropdown => DropdownButton<Frequency>(
         value: _frequency,
         underline: const SizedBox.shrink(),
-        style: theme.textTheme.titleMedium,
+        style: Theme.of(context).textTheme.titleMedium,
         items: [
           for (final freq in [
             Frequency.daily,
@@ -289,29 +287,32 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
   // "Custom" mode
   // -----------------------------------------------------------------
 
-  Widget _customIntervalRow(ThemeData theme) => Row(
-        children: [
-          Text(_loc.every, style: theme.textTheme.titleMedium),
-          NumberStepper(
-            value: _interval,
-            onChanged: (v) {
-              setState(() => _interval = v);
-              _buildRule();
-            },
-          ),
-          const SizedBox(width: 4),
-          _customFrequencyDropdown(theme),
-          Text(
-            _loc.onConnector,
-            style: theme.textTheme.titleMedium,
-          ),
-        ],
-      );
+  Widget get _customIntervalRow {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Text(_loc.every, style: theme.textTheme.titleMedium),
+        NumberStepper(
+          value: _interval,
+          onChanged: (v) {
+            setState(() => _interval = v);
+            _buildRule();
+          },
+        ),
+        const SizedBox(width: 4),
+        _customFrequencyDropdown,
+        Text(
+          _loc.onConnector,
+          style: theme.textTheme.titleMedium,
+        ),
+      ],
+    );
+  }
 
-  Widget _customFrequencyDropdown(ThemeData theme) => DropdownButton<Frequency>(
+  Widget get _customFrequencyDropdown => DropdownButton<Frequency>(
         value: _frequency,
         underline: const SizedBox.shrink(),
-        style: theme.textTheme.titleMedium,
+        style: Theme.of(context).textTheme.titleMedium,
         items: [
           for (final freq in _customFrequencies)
             DropdownMenuItem(
@@ -326,7 +327,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         },
       );
 
-  Widget _customContent() => switch (_frequency) {
+  Widget get _customContent => switch (_frequency) {
         Frequency.weekly => WeeklyDayPicker(
             selected: _selectedWeekdays,
             onChanged: (v) {
@@ -431,10 +432,10 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
   // Shared helpers
   // -----------------------------------------------------------------
 
-  Widget _modeDropdown(ThemeData theme) => DropdownButton<RecurrenceMode>(
+  Widget get _modeDropdown => DropdownButton<RecurrenceMode>(
         value: _mode,
         underline: const SizedBox.shrink(),
-        style: theme.textTheme.titleMedium,
+        style: Theme.of(context).textTheme.titleMedium,
         items: [
           DropdownMenuItem(
             value: RecurrenceMode.every,
