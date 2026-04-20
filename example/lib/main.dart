@@ -90,7 +90,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 12),
             _SectionHeader(label: loc.description),
             const SizedBox(height: 4),
-            _RuleDescription(rule: _rule),
+            _RuleDescription(rule: _rule, startDate: _startDate),
           ],
         ),
       ),
@@ -144,7 +144,8 @@ class _SectionHeader extends StatelessWidget {
 /// Displays a human-readable description of a [RecurrenceRule].
 class _RuleDescription extends StatefulWidget {
   final RecurrenceRule rule;
-  const _RuleDescription({required this.rule});
+  final DateTime startDate;
+  const _RuleDescription({required this.rule, required this.startDate});
 
   @override
   State<_RuleDescription> createState() => _RuleDescriptionState();
@@ -184,6 +185,7 @@ class _RuleDescriptionState extends State<_RuleDescription> {
       l10n: _l10n!,
       loc: RecurrenceLocalizations.of(context)!,
       verbose: true,
+      startDate: widget.startDate,
     );
     return Text(text, style: Theme.of(context).textTheme.bodyLarge);
   }
