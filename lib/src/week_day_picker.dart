@@ -50,7 +50,7 @@ class WeekDayPicker extends StatelessWidget {
               if (selected) {
                 updated.add(day.weekday);
               } else {
-                updated.remove(day.weekday);
+                if (updated.length > 1) updated.remove(day.weekday);
               }
               onChanged(updated);
             },
