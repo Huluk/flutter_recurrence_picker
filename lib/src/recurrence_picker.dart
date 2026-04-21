@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:rrule/rrule.dart';
 
+import 'build_recurrence.dart';
 import 'end_of_month_selector.dart';
 import 'l10n/recurrence_localizations.dart';
 import 'locale_utils.dart';
 import 'month_grid.dart';
 import 'monthly_picker.dart';
-import 'nth_weekday_selector.dart';
 import 'number_stepper.dart';
+import 'recurrence_selection.dart';
 import 'rrule_utils.dart';
 import 'week_day_picker.dart';
-
-/// Internal switch between the simple interval rule and the detailed
-/// day/date-based rule. Exposed in the UI as the "on specific days" toggle.
-enum RecurrenceMode { every, custom }
 
 /// Controls the visibility and behavior of the "on specific days" toggle.
 enum SpecificDaysMode {
@@ -82,43 +79,33 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
     Frequency.yearly,
   ];
 
-  // Common state.
-  RecurrenceMode _mode = RecurrenceMode.every;
-  late Frequency _frequency;
-  late int _interval;
-
-  // Weekly state.
-  Set<int> _selectedWeekdays = {DateTime.monday};
-
-  // Monthly / yearly shared state.
-  MonthlySelection _selection = const MonthlySelection();
-  late EndOfMonthBehavior _endOfMonthBehavior;
-
-  // Yearly state.
-  Set<int> _selectedMonths = {1};
+  late RecurrenceSelection _selection;
 
   RecurrenceLocalizations get _loc => RecurrenceLocalizations.of(context)!;
 
   @override
   void initState() {
     super.initState();
-    _frequency = widget.initialFrequency;
-    _interval = widget.initialInterval;
-    _endOfMonthBehavior = widget.defaultEndOfMonthBehavior;
-    _mode = _resolveMode(_mode);
-    _applyStartDateDefaults(widget.startDate);
+    _selection = RecurrenceSelection(
+      frequency: widget.initialFrequency,
+      interval: widget.initialInterval,
+      endOfMonthBehavior: widget.defaultEndOfMonthBehavior,
+    ).withStartDate(widget.startDate);
+    _selection = _resolveMode(_selection);
   }
 
-  /// Resolves the effective [RecurrenceMode] given the current frequency and
+  /// Resolves the effective [RecurrenceMode] given the current selection and
   /// the configured [RecurrencePicker.specificDaysMode].
-  RecurrenceMode _resolveMode(RecurrenceMode current) =>
-      switch (widget.specificDaysMode) {
-        SpecificDaysMode.disabled => RecurrenceMode.every,
-        SpecificDaysMode.alwaysOn =>
-          _customAvailable ? RecurrenceMode.custom : RecurrenceMode.every,
-        SpecificDaysMode.toggle =>
-          _customAvailable ? current : RecurrenceMode.every,
-      };
+  RecurrenceSelection _resolveMode(RecurrenceSelection s) {
+    final mode = switch (widget.specificDaysMode) {
+      SpecificDaysMode.disabled => RecurrenceMode.every,
+      SpecificDaysMode.alwaysOn =>
+        s.customAvailable ? RecurrenceMode.custom : RecurrenceMode.every,
+      SpecificDaysMode.toggle =>
+        s.customAvailable ? s.mode : RecurrenceMode.every,
+    };
+    return s.copyWith(mode: mode);
+  }
 
   @override
   void didUpdateWidget(RecurrencePicker oldWidget) {
@@ -126,126 +113,31 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
     final startDateChanged = widget.startDate != oldWidget.startDate;
     final specificDaysModeChanged =
         widget.specificDaysMode != oldWidget.specificDaysMode;
-    if (startDateChanged) _applyStartDateDefaults(widget.startDate);
-    if (specificDaysModeChanged) _mode = _resolveMode(_mode);
+    if (startDateChanged) {
+      _selection = _selection.withStartDate(widget.startDate);
+    }
+    if (specificDaysModeChanged) _selection = _resolveMode(_selection);
     if (startDateChanged || specificDaysModeChanged) {
-      // Defer notification — calling _buildRule() during build
-      // would trigger the parent's setState() mid-frame.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _buildRule();
+        if (mounted) _notify();
       });
     }
   }
 
-  /// Derives sensible default values for all pickers from [date].
-  ///
-  /// When [date] is null, falls back to generic defaults.
-  void _applyStartDateDefaults(DateTime? date) {
-    if (date == null) return;
-
-    _selectedWeekdays = {date.weekday};
-    _selectedMonths = {date.month};
-
-    final daysInMonth = DateUtils.getDaysInMonth(date.year, date.month);
-    _selection = date.day == daysInMonth
-        ? MonthlySelection(
-            mode: MonthlyMode.weekday,
-            monthDay: date.day,
-            ordinal: Ordinal.last,
-            nthWeekday: WeekdayChoice.anyDay,
-          )
-        : MonthlySelection(
-            mode: MonthlyMode.date,
-            monthDay: date.day,
-            nthWeekday: WeekdayChoice.fromValue(date.weekday),
-            ordinal: date.day + 7 > daysInMonth
-                ? Ordinal.last
-                : Ordinal.fromValue(1 + (date.day - 1) ~/ 7),
-          );
-  }
-
   // -----------------------------------------------------------------
-  // Recurrence rule construction
+  // Notification
   // -----------------------------------------------------------------
 
-  void _buildRule() {
+  void _notify() {
     widget.onRecurrenceChanged(
-      _mode == RecurrenceMode.every ? _buildBasicRule() : _buildCustomRule(),
+      _selection.toRrule(
+          startDate: widget.startDate, dateSymbols: dateSymbolsOf(context)),
     );
   }
 
-  /// Builds the RecurrenceRule for "Every" mode, delegating end-of-month
-  /// clamping to [RecurrenceRuleClamping.clamp].
-  RecurrenceRule _buildBasicRule() {
-    final rule = RecurrenceRule(frequency: _frequency, interval: _interval);
-    final start = widget.startDate;
-    if (start == null) return rule;
-    return _endOfMonthBehavior == EndOfMonthBehavior.previousDay
-        ? rule.clamp(startDate: start)
-        : rule;
-  }
-
-  RecurrenceRule _buildCustomRule() => switch (_frequency) {
-        Frequency.weekly => RecurrenceRule(
-            frequency: Frequency.weekly,
-            interval: _interval,
-            byWeekDays: [
-              for (final d in _selectedWeekdays) ByWeekDayEntry(d),
-            ],
-          ),
-        Frequency.monthly when _selection.mode == MonthlyMode.date =>
-          _dateRule(Frequency.monthly),
-        Frequency.monthly => _nthWeekdayRule(Frequency.monthly),
-        Frequency.yearly when _selection.mode == MonthlyMode.date =>
-          _dateRule(Frequency.yearly),
-        Frequency.yearly => _nthWeekdayRule(Frequency.yearly),
-        _ => RecurrenceRule(
-            frequency: _frequency,
-            interval: _interval,
-          ),
-      };
-
-  /// Builds an nth-weekday RecurrenceRule.
-  ///
-  /// For a plain weekday the rule is simple:
-  ///   e.g. "2nd Monday" → BYDAY=2MO
-  ///
-  /// For a special category, nth selects from the expanded set:
-  ///   e.g. "2nd work day" → BYDAY=MO,TU,WE,TH,FR; BYSETPOS=2
-  RecurrenceRule _nthWeekdayRule(Frequency freq) {
-    final symbols = dateSymbolsOf(context);
-    final byWeekDays = _selection.nthWeekday
-        .days(symbols)
-        .map((d) => ByWeekDayEntry(d, _selection.ordinal.value))
-        .toList();
-    return RecurrenceRule(
-      frequency: freq,
-      interval: _interval,
-      byMonths: freq == Frequency.yearly
-          ? (_selectedMonths.toList()..sort())
-          : const [],
-      byWeekDays: byWeekDays,
-      bySetPositions: byWeekDays.isEmpty
-          ? <int>[]
-          : [_selection.ordinal.value.compareTo(0)],
-    );
-  }
-
-  /// Builds a date-based RecurrenceRule.
-  RecurrenceRule _dateRule(Frequency freq) {
-    final rule = RecurrenceRule(
-      frequency: freq,
-      interval: _interval,
-      byMonths: freq == Frequency.yearly
-          ? (_selectedMonths.toList()..sort())
-          : const [],
-      byMonthDays: [_selection.monthDay],
-    );
-    return _endOfMonthBehavior == EndOfMonthBehavior.previousDay
-        ? rule.clamp(
-            startDate:
-                widget.startDate ?? DateTime(1970, 1, _selection.monthDay))
-        : rule;
+  void _update(RecurrenceSelection next) {
+    setState(() => _selection = next);
+    _notify();
   }
 
   // -----------------------------------------------------------------
@@ -259,7 +151,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         children: [
           _intervalSection,
           if (widget.specificDaysMode == SpecificDaysMode.toggle) _customToggle,
-          if (_mode == RecurrenceMode.custom) ...[
+          if (_selection.mode == RecurrenceMode.custom) ...[
             const SizedBox(height: 8),
             _customContent,
           ],
@@ -280,25 +172,22 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
             Text(_loc.every, style: theme.textTheme.titleMedium),
             const SizedBox(width: 4),
             NumberStepper(
-              value: _interval,
-              onChanged: (v) {
-                setState(() => _interval = v);
-                _buildRule();
-              },
+              value: _selection.interval,
+              onChanged: (v) => _update(_selection.copyWith(interval: v)),
               hint: _loc.interval,
             ),
             const SizedBox(width: 4),
             _frequencyDropdown,
           ],
         ),
-        if (_mode == RecurrenceMode.every && _showEndOfMonthSelector)
+        if (_selection.mode == RecurrenceMode.every && _showEndOfMonthSelector)
           _endOfMonthSelector,
       ],
     );
   }
 
   Widget get _frequencyDropdown => DropdownButton<Frequency>(
-        value: _frequency,
+        value: _selection.frequency,
         underline: const SizedBox.shrink(),
         focusColor: Colors.transparent,
         style: Theme.of(context).textTheme.titleMedium,
@@ -311,20 +200,13 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         ],
         onChanged: (value) {
           if (value == null) return;
-          setState(() {
-            _frequency = value;
-            _mode = _resolveMode(_mode);
-          });
-          _buildRule();
+          _update(_resolveMode(_selection.copyWith(frequency: value)));
         },
       );
 
-  /// Whether the custom-selection toggle is meaningful: "on specific days"
-  /// does not apply for daily recurrence.
-  bool get _customAvailable => _frequency != Frequency.daily;
-
-  /// Switch + label that toggles [_mode] between every and custom. Disabled
-  /// when [_customAvailable] is false. Merged into a single semantic control.
+  /// Switch + label that toggles the mode between every and custom. Disabled
+  /// when [RecurrenceSelection.customAvailable] is false. Merged into a
+  /// single semantic control.
   Widget get _customToggle {
     final theme = Theme.of(context);
     return MergeSemantics(
@@ -332,8 +214,8 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Switch(
-            value: _mode == RecurrenceMode.custom,
-            onChanged: _customAvailable ? _setCustomMode : null,
+            value: _selection.mode == RecurrenceMode.custom,
+            onChanged: _selection.customAvailable ? _setCustomMode : null,
           ),
           const SizedBox(width: 4),
           Padding(
@@ -346,24 +228,20 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
     );
   }
 
-  void _setCustomMode(bool value) {
-    setState(
-      () => _mode = value ? RecurrenceMode.custom : RecurrenceMode.every,
-    );
-    _buildRule();
-  }
+  void _setCustomMode(bool value) => _update(
+        _selection.copyWith(
+          mode: value ? RecurrenceMode.custom : RecurrenceMode.every,
+        ),
+      );
 
   // -----------------------------------------------------------------
   // "Custom" mode content
   // -----------------------------------------------------------------
 
-  Widget get _customContent => switch (_frequency) {
+  Widget get _customContent => switch (_selection.frequency) {
         Frequency.weekly => WeekDayPicker(
-            selected: _selectedWeekdays,
-            onChanged: (v) {
-              setState(() => _selectedWeekdays = v);
-              _buildRule();
-            },
+            selected: _selection.weekdays,
+            onChanged: (v) => _update(_selection.copyWith(weekdays: v)),
           ),
         Frequency.monthly => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -383,52 +261,50 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
 
   MonthlyPicker _monthlyPicker({Set<int> months = const {0}}) {
     final daysInMonth = maxDaysInMonths(months);
-    final clamped = _selection.monthDay > daysInMonth
-        ? _selection.copyWith(monthDay: daysInMonth)
-        : _selection;
+    final monthly = _selection.monthly;
+    final clamped = monthly.monthDay > daysInMonth
+        ? monthly.copyWith(monthDay: daysInMonth)
+        : monthly;
     return MonthlyPicker(
       selection: clamped,
       months: months,
-      onChanged: (v) {
-        setState(() => _selection = v);
-        _buildRule();
-      },
+      onChanged: (v) => _update(_selection.copyWith(monthly: v)),
     );
   }
 
   /// Whether the end-of-month selector should be shown.
   bool get _showEndOfMonthSelector {
     if (!widget.showEndOfMonthSelector) return false;
-    if (_frequency != Frequency.monthly && _frequency != Frequency.yearly) {
+    final frequency = _selection.frequency;
+    if (frequency != Frequency.monthly && frequency != Frequency.yearly) {
       return false;
     }
 
-    if (_mode == RecurrenceMode.every) {
+    if (_selection.mode == RecurrenceMode.every) {
       final startDate = widget.startDate;
       if (startDate == null) return false;
-      return switch (_frequency) {
+      return switch (frequency) {
         Frequency.monthly => startDate.day > minDaysInMonths(),
         Frequency.yearly => startDate.month == 2 && startDate.day == 29,
         _ => false,
       };
     }
 
-    if (_selection.mode != MonthlyMode.date) return false;
-    if (_selection.monthDay == maxDaysInMonths(_selectedMonths)) return false;
-    if (_frequency == Frequency.yearly &&
-        _selectedMonths.contains(2) &&
-        _selection.monthDay == 29) {
+    final monthly = _selection.monthly;
+    final months = _selection.months;
+    if (monthly.mode != MonthlyMode.date) return false;
+    if (monthly.monthDay == maxDaysInMonths(months)) return false;
+    if (frequency == Frequency.yearly &&
+        months.contains(2) &&
+        monthly.monthDay == 29) {
       return true;
     }
-    return minDaysInMonths(_selectedMonths) < _selection.monthDay;
+    return minDaysInMonths(months) < monthly.monthDay;
   }
 
   Widget get _endOfMonthSelector => EndOfMonthSelector(
-        behavior: _endOfMonthBehavior,
-        onChanged: (v) {
-          setState(() => _endOfMonthBehavior = v);
-          _buildRule();
-        },
+        behavior: _selection.endOfMonthBehavior,
+        onChanged: (v) => _update(_selection.copyWith(endOfMonthBehavior: v)),
       );
 
   // -----------------------------------------------------------------
@@ -440,24 +316,24 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         mainAxisSize: MainAxisSize.min,
         children: [
           MonthGrid(
-            selectedMonths: _selectedMonths,
+            selectedMonths: _selection.months,
             multiSelectionEnabled: false,
-            onChanged: (v) {
-              final daysInMonth = maxDaysInMonths(v);
-              setState(() {
-                _selectedMonths = v;
-                if (_selection.monthDay > daysInMonth) {
-                  _selection = _selection.copyWith(monthDay: daysInMonth);
-                }
-              });
-              _buildRule();
-            },
+            onChanged: _onYearlyMonthsChanged,
           ),
           const SizedBox(height: 8),
-          _monthlyPicker(months: _selectedMonths),
+          _monthlyPicker(months: _selection.months),
           if (_showEndOfMonthSelector) _endOfMonthSelector,
         ],
       );
+
+  void _onYearlyMonthsChanged(Set<int> months) {
+    final daysInMonth = maxDaysInMonths(months);
+    final monthly = _selection.monthly;
+    final nextMonthly = monthly.monthDay > daysInMonth
+        ? monthly.copyWith(monthDay: daysInMonth)
+        : monthly;
+    _update(_selection.copyWith(months: months, monthly: nextMonthly));
+  }
 
   String _frequencyLabel(Frequency frequency) => switch (frequency) {
         Frequency.daily => _loc.frequencyDays,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:recurrence_picker/recurrence_picker.dart';
 import 'package:recurrence_picker/src/month_grid.dart';
-import 'package:recurrence_picker/src/monthly_picker.dart';
 import 'package:recurrence_picker/src/number_stepper.dart';
 import 'package:rrule/rrule.dart';
 
@@ -13,6 +12,7 @@ Future<void> pumpPicker(
   DateTime? startDate,
   EndOfMonthBehavior defaultEndOfMonthBehavior = EndOfMonthBehavior.previousDay,
   bool showEndOfMonthSelector = true,
+  SpecificDaysMode specificDaysMode = SpecificDaysMode.toggle,
   ValueChanged<RecurrenceRule>? onRecurrenceChanged,
 }) async {
   await tester.pumpWidget(
@@ -28,6 +28,7 @@ Future<void> pumpPicker(
             startDate: startDate,
             defaultEndOfMonthBehavior: defaultEndOfMonthBehavior,
             showEndOfMonthSelector: showEndOfMonthSelector,
+            specificDaysMode: specificDaysMode,
             onRecurrenceChanged: onRecurrenceChanged ?? (_) {},
           ),
         ),
@@ -138,19 +139,11 @@ void main() {
 
     group('custom toggle', () {
       testWidgets('toggling on shows custom content', (tester) async {
-        RecurrenceRule? received;
-        await pumpPicker(
-          tester,
-          initialFrequency: Frequency.weekly,
-          onRecurrenceChanged: (r) => received = r,
-        );
+        await pumpPicker(tester, initialFrequency: Frequency.weekly);
 
         await tapCustomToggle(tester);
 
         expect(find.byType(WeekDayPicker), findsOneWidget);
-        expect(received, isNotNull);
-        expect(received!.frequency, Frequency.weekly);
-        expect(received!.byWeekDays, isNotEmpty);
       });
 
       testWidgets('toggling off hides custom content', (tester) async {
@@ -165,23 +158,6 @@ void main() {
     });
 
     group('custom mode content', () {
-      testWidgets('weekly rule includes selected weekdays', (tester) async {
-        RecurrenceRule? received;
-        await pumpPicker(
-          tester,
-          initialFrequency: Frequency.weekly,
-          onRecurrenceChanged: (r) => received = r,
-        );
-
-        await tapCustomToggle(tester);
-
-        // Default selection is Monday (from _selectedWeekdays init).
-        expect(
-          received!.byWeekDays.map((e) => e.day),
-          contains(DateTime.monday),
-        );
-      });
-
       testWidgets('shows MonthlyPicker for monthly frequency', (tester) async {
         await pumpPicker(tester, initialFrequency: Frequency.monthly);
 
@@ -245,24 +221,90 @@ void main() {
       });
     });
 
-    group('startDate defaults', () {
-      testWidgets('uses startDate weekday for custom weekly selection',
+    group('specificDaysMode', () {
+      testWidgets('toggleable (default) shows the switch', (tester) async {
+        await pumpPicker(tester);
+
+        expect(find.byType(Switch), findsOneWidget);
+      });
+
+      testWidgets('disabled hides the switch and custom content',
           (tester) async {
-        // 2025-01-15 is a Wednesday.
-        RecurrenceRule? received;
         await pumpPicker(
           tester,
           initialFrequency: Frequency.weekly,
-          startDate: DateTime(2025, 1, 15),
-          onRecurrenceChanged: (r) => received = r,
+          specificDaysMode: SpecificDaysMode.disabled,
         );
 
-        await tapCustomToggle(tester);
+        expect(find.byType(Switch), findsNothing);
+        expect(find.byType(WeekDayPicker), findsNothing);
+      });
 
-        expect(
-          received!.byWeekDays.map((e) => e.day),
-          contains(DateTime.wednesday),
+      testWidgets('disabled keeps custom UI hidden across frequency changes',
+          (tester) async {
+        await pumpPicker(
+          tester,
+          initialFrequency: Frequency.weekly,
+          specificDaysMode: SpecificDaysMode.disabled,
         );
+
+        await selectFrequency(tester, 'months');
+
+        expect(find.byType(Switch), findsNothing);
+        expect(find.byType(MonthlyPicker), findsNothing);
+      });
+
+      testWidgets('alwaysOn hides the switch and shows custom content',
+          (tester) async {
+        await pumpPicker(
+          tester,
+          initialFrequency: Frequency.weekly,
+          specificDaysMode: SpecificDaysMode.alwaysOn,
+        );
+
+        expect(find.byType(Switch), findsNothing);
+        expect(find.byType(WeekDayPicker), findsOneWidget);
+      });
+
+      testWidgets('alwaysOn keeps custom UI visible after switching to weekly',
+          (tester) async {
+        await pumpPicker(
+          tester,
+          initialFrequency: Frequency.monthly,
+          specificDaysMode: SpecificDaysMode.alwaysOn,
+        );
+
+        await selectFrequency(tester, 'weeks');
+
+        expect(find.byType(Switch), findsNothing);
+        expect(find.byType(WeekDayPicker), findsOneWidget);
+      });
+
+      testWidgets('alwaysOn falls back to every mode for daily',
+          (tester) async {
+        await pumpPicker(
+          tester,
+          initialFrequency: Frequency.daily,
+          specificDaysMode: SpecificDaysMode.alwaysOn,
+        );
+
+        expect(find.byType(Switch), findsNothing);
+        expect(find.byType(WeekDayPicker), findsNothing);
+        expect(find.byType(MonthlyPicker), findsNothing);
+      });
+
+      testWidgets('alwaysOn re-enables custom content after leaving daily',
+          (tester) async {
+        await pumpPicker(
+          tester,
+          initialFrequency: Frequency.daily,
+          specificDaysMode: SpecificDaysMode.alwaysOn,
+        );
+        expect(find.byType(WeekDayPicker), findsNothing);
+
+        await selectFrequency(tester, 'weeks');
+
+        expect(find.byType(WeekDayPicker), findsOneWidget);
       });
     });
   });

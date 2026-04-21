@@ -82,7 +82,9 @@ void main() {
         expect(received, unorderedEquals({DateTime.thursday}));
       });
 
-      testWidgets('can deselect all chips', (tester) async {
+      testWidgets(
+          'deselecting the last remaining chip keeps at least one selected',
+          (tester) async {
         Set<int>? received;
         await pumpPicker(
           tester,
@@ -91,7 +93,14 @@ void main() {
         );
 
         await tester.tap(find.text('Sun'));
-        expect(received, isEmpty);
+
+        // Correct behavior: the picker should not allow an empty
+        // selection. Either onChanged is not called, or it is
+        // called with the original set unchanged.
+        expect(received, isNotNull,
+            reason: 'Should not allow deselecting the last weekday');
+        expect(received, contains(DateTime.sunday),
+            reason: 'Last weekday should remain selected');
       });
     });
   });

@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:recurrence_picker/recurrence_picker.dart';
 import 'package:recurrence_picker/src/day_of_month_grid.dart';
-import 'package:recurrence_picker/src/locale_utils.dart'
-    show WeekdayChoice;
-import 'package:recurrence_picker/src/monthly_picker.dart'
-    show MonthlyPicker;
+import 'package:recurrence_picker/src/locale_utils.dart' show WeekdayChoice;
 
 Future<void> pumpPicker(
   WidgetTester tester, {
@@ -67,8 +64,7 @@ void main() {
     });
 
     group('mode switching', () {
-      testWidgets('tapping Weekday switches to weekday mode',
-          (tester) async {
+      testWidgets('tapping Weekday switches to weekday mode', (tester) async {
         MonthlySelection? received;
         await pumpPicker(
           tester,
@@ -137,8 +133,7 @@ void main() {
     });
 
     group('weekday mode interaction', () {
-      testWidgets('changing ordinal reports updated selection',
-          (tester) async {
+      testWidgets('changing ordinal reports updated selection', (tester) async {
         MonthlySelection? received;
         await pumpPicker(
           tester,
