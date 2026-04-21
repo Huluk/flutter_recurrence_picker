@@ -15,12 +15,27 @@ import 'week_day_picker.dart';
 /// day/date-based rule. Exposed in the UI as the "on specific days" toggle.
 enum RecurrenceMode { every, custom }
 
+/// Controls the visibility and behavior of the "on specific days" toggle.
+enum SpecificDaysMode {
+  /// Never show the toggle and never enter the specific-days mode.
+  /// The picker always emits a simple interval rule.
+  disabled,
+
+  /// Show the toggle; the user chooses whether to refine the rule with
+  /// specific-day selections. This is the default.
+  toggle,
+
+  /// Never show the toggle but always enable the specific-days mode when
+  /// the current frequency supports it (everything except daily).
+  alwaysOn,
+}
+
 /// A compound widget for selecting a [RecurrenceRule].
 ///
 /// The interval and frequency ("every 2 weeks") are always shown. A toggle
 /// labelled "on specific days" expands the picker into **Custom** mode, where
 /// the user specifies exactly which days, weekdays, or months the recurrence
-/// targets. The toggle is disabled for the daily frequency.
+/// targets.
 class RecurrencePicker extends StatefulWidget {
   final Frequency initialFrequency;
   final int initialInterval;
@@ -40,6 +55,10 @@ class RecurrencePicker extends StatefulWidget {
   /// critical date is picked. Defaults to `true`.
   final bool showEndOfMonthSelector;
 
+  /// Controls whether the "on specific days" toggle is shown and whether the
+  /// specific-days mode may be active. Defaults to [SpecificDaysMode.toggle].
+  final SpecificDaysMode specificDaysMode;
+
   const RecurrencePicker({
     super.key,
     this.initialFrequency = Frequency.weekly,
@@ -48,6 +67,7 @@ class RecurrencePicker extends StatefulWidget {
     this.startDate,
     this.defaultEndOfMonthBehavior = EndOfMonthBehavior.previousDay,
     this.showEndOfMonthSelector = true,
+    this.specificDaysMode = SpecificDaysMode.toggle,
   });
 
   @override
@@ -85,15 +105,31 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
     _frequency = widget.initialFrequency;
     _interval = widget.initialInterval;
     _endOfMonthBehavior = widget.defaultEndOfMonthBehavior;
+    _mode = _resolveMode(_mode);
     _applyStartDateDefaults(widget.startDate);
   }
+
+  /// Resolves the effective [RecurrenceMode] given the current frequency and
+  /// the configured [RecurrencePicker.specificDaysMode].
+  RecurrenceMode _resolveMode(RecurrenceMode current) =>
+      switch (widget.specificDaysMode) {
+        SpecificDaysMode.disabled => RecurrenceMode.every,
+        SpecificDaysMode.alwaysOn =>
+          _customAvailable ? RecurrenceMode.custom : RecurrenceMode.every,
+        SpecificDaysMode.toggle =>
+          _customAvailable ? current : RecurrenceMode.every,
+      };
 
   @override
   void didUpdateWidget(RecurrencePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.startDate != oldWidget.startDate) {
-      _applyStartDateDefaults(widget.startDate);
-      // Defer notification — calling _notify() during build
+    final startDateChanged = widget.startDate != oldWidget.startDate;
+    final specificDaysModeChanged =
+        widget.specificDaysMode != oldWidget.specificDaysMode;
+    if (startDateChanged) _applyStartDateDefaults(widget.startDate);
+    if (specificDaysModeChanged) _mode = _resolveMode(_mode);
+    if (startDateChanged || specificDaysModeChanged) {
+      // Defer notification — calling _buildRule() during build
       // would trigger the parent's setState() mid-frame.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _buildRule();
@@ -222,7 +258,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _intervalSection,
-          _customToggle,
+          if (widget.specificDaysMode == SpecificDaysMode.toggle) _customToggle,
           if (_mode == RecurrenceMode.custom) ...[
             const SizedBox(height: 8),
             _customContent,
@@ -277,7 +313,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
           if (value == null) return;
           setState(() {
             _frequency = value;
-            if (!_customAvailable) _mode = RecurrenceMode.every;
+            _mode = _resolveMode(_mode);
           });
           _buildRule();
         },
